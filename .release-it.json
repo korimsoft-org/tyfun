@@ -5,13 +5,12 @@
     "push": true,
     "requireCleanWorkingDir": true
   },
-  "npm": {
-    "publish": false
-  },
+  "npm": false,
   "github": {
     "release": false
   },
   "hooks": {
-    "before:init": "npm test"
+    "before:init": "pnpm test",
+    "after:bump": "pnpm version ${version} --no-git-tag-version"
   }
 }
