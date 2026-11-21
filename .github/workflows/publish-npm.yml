@@ -20,20 +20,25 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Set up pnpm (version from packageManager in package.json)
+        uses: pnpm/action-setup@v4
+
       - name: Use Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node-version }}
           registry-url: 'https://registry.npmjs.org'
+          cache: pnpm
 
-      - name: Show Node and npm versions
+      - name: Show Node and pnpm versions
         run: |
           node --version
-          npm --version
+          pnpm --version
 
-      - run: npm ci
-      - run: npm run build --if-present
-      - run: npm test
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run --if-present build
+      - run: pnpm test
 
+      # --no-git-checks: a tag push checks out a detached HEAD, not the release branch
       - name: Publish the artifact to NPM registry
-        run: npm publish --provenance
+        run: pnpm publish --provenance --no-git-checks
