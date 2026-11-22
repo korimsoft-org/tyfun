@@ -8,6 +8,10 @@ name: Deploy to the NPM repo
 #
 # The bump comes from the labels of the merged pull request:
 #   release:major -> major, release:minor -> minor, otherwise -> patch.
+#
+# Two jobs, so that no dependency ever runs where the package can be published:
+#   build   - installs, builds, tests and packs the tarball. No permission to publish or tag.
+#   publish - only downloads that tarball, tags the commit and publishes. Installs nothing.
 
 on:
   push:
@@ -20,32 +24,30 @@ concurrency:
   group: publish-npm
   cancel-in-progress: false
 
-permissions:
-  contents: write       # push the release tag
-  pull-requests: read   # read the labels of the merged pull request
-  id-token: write       # npm provenance / trusted publishing
+permissions: {}
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    environment: publish-npm
-    strategy:
-      matrix:
-        node-version: [ 26.x ]
+    permissions:
+      contents: read        # check out the code and read the tags
+      pull-requests: read   # read the labels of the merged pull request
+    outputs:
+      version: ${{ steps.version.outputs.version }}
     steps:
       - name: Checkout (with tags)
         uses: actions/checkout@v7
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Set up pnpm (version from packageManager in package.json)
         uses: pnpm/action-setup@v6
 
-      - name: Use Node.js ${{ matrix.node-version }}
+      - name: Use Node.js 26.x
         uses: actions/setup-node@v7
         with:
-          node-version: ${{ matrix.node-version }}
-          registry-url: 'https://registry.npmjs.org'
+          node-version: 26.x
           cache: pnpm
 
       - name: Show Node and pnpm versions
@@ -93,18 +95,61 @@ jobs:
       - run: pnpm run --if-present build
       - run: pnpm test
 
+      - name: Pack the tarball
+        run: pnpm pack --pack-destination package
+
+      - name: Keep the tarball for the publish job
+        uses: actions/upload-artifact@v7
+        with:
+          name: package
+          path: package/*.tgz
+          if-no-files-found: error
+          retention-days: 7
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    environment: publish-npm
+    permissions:
+      contents: write   # create the release tag
+      id-token: write   # npm trusted publishing and provenance
+    env:
+      VERSION: ${{ needs.build.outputs.version }}
+    steps:
+      - name: Download the tarball
+        uses: actions/download-artifact@v8
+        with:
+          name: package
+          path: package
+
+      - name: Use Node.js 26.x
+        uses: actions/setup-node@v7
+        with:
+          node-version: 26.x
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Show Node and npm versions
+        run: |
+          node --version
+          npm --version
+
       # Tag before publishing: if the publish fails, a rerun finds the tag and retries the same version.
       - name: Tag the release
         env:
-          TAG: v${{ steps.version.outputs.version }}
+          GH_TOKEN: ${{ github.token }}
+          TAG: v${{ needs.build.outputs.version }}
         run: |
-          if git rev-parse -q --verify "refs/tags/$TAG" >/dev/null; then
-            echo "$TAG already exists"
+          if ! tagged=$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/${TAG}" --jq .object.sha 2>/dev/null); then
+            gh api "repos/${GITHUB_REPOSITORY}/git/refs" -f ref="refs/tags/${TAG}" -f sha="${GITHUB_SHA}" --silent
+            echo "Tagged ${GITHUB_SHA} as ${TAG}"
+          elif [ "$tagged" = "$GITHUB_SHA" ]; then
+            echo "${TAG} already points at this commit"
           else
-            git tag "$TAG"
-            git push origin "$TAG"
+            echo "::error::${TAG} already exists on another commit (${tagged})"
+            exit 1
           fi
 
-      # --no-git-checks: package.json is changed and HEAD is detached, both on purpose
+      # npm, not pnpm: nothing is installed here, and npm publishes a ready tarball as it is.
+      # The leading ./ matters: without it npm reads package/... as a GitHub owner/repo.
       - name: Publish the artifact to NPM registry
-        run: pnpm publish --provenance --no-git-checks
+        run: npm publish "./package/korimsoft-tyfun-${VERSION}.tgz" --provenance
