@@ -19,6 +19,12 @@ Use with care, as there may be incompatible changes between versions.
 npm install --save korimsoft-tyfun@latest
 ```
 
+or with pnpm:
+
+```bash
+pnpm add korimsoft-tyfun@latest
+```
+
 ## Usage
 
 Import utilities directly from the package root:

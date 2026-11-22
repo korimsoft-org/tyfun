@@ -1,0 +1,40 @@
+name: Publish dry run
+
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  dry-run:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [ 26.x ]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up pnpm (version from packageManager in package.json)
+        uses: pnpm/action-setup@v6
+
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v7
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run --if-present build
+      - run: pnpm test
+
+      - name: List the files the package would contain
+        run: pnpm pack --dry-run
+
+      # Runs the publish command without uploading anything or logging in to npm.
+      # --no-git-checks: a pull request checks out a merge commit, not the release branch
+      - name: Publish dry run
+        run: pnpm publish --dry-run --no-git-checks

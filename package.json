@@ -6,11 +6,11 @@
   "types": "./dist/type-decl/index.d.ts",
   "scripts": {
     "compile": "webpack ",
-    "build": "npm run compile",
+    "build": "pnpm run compile",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
-    "preversion": "npm run test",
+    "preversion": "pnpm test",
     "release": "release-it",
     "release:patch": "release-it patch",
     "release:minor": "release-it minor",
@@ -43,6 +43,7 @@
   ],
   "author": "Korimsoft",
   "license": "MIT",
+  "packageManager": "pnpm@12.22.0",
   "bugs": {
     "url": "https://github.com/Korimsoft/tyfun/issues"
   },
