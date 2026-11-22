@@ -358,6 +358,22 @@ The package currently exports:
 - `ObjectMap`
 - `Predicate`
 
+## Releasing
+
+Every pull request merged into `main` is released to npm automatically by `.github/workflows/publish-npm.yml`. Nobody runs a release command, and direct pushes to `main` are not allowed.
+
+The label on the merged pull request decides the new version:
+
+| Label           | Version change | Example         |
+|-----------------|----------------|-----------------|
+| _none_          | patch          | 0.12.8 → 0.12.9 |
+| `release:minor` | minor          | 0.12.8 → 0.13.0 |
+| `release:major` | major          | 0.12.8 → 1.0.0  |
+
+The workflow runs the build and tests, pushes the tag `vX.Y.Z` and publishes with npm provenance. If the tests fail, nothing is published.
+
+The version in `package.json` on `main` is **not** updated: the git tags and npm show the released version. If a publish fails after the tag was pushed, rerun the workflow and it retries the same version.
+
 ## License
 
 MIT
