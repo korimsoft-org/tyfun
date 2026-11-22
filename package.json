@@ -9,12 +9,7 @@
     "build": "pnpm run compile",
     "test": "jest",
     "test:watch": "jest --watch",
-    "test:coverage": "jest --coverage",
-    "preversion": "pnpm test",
-    "release": "release-it",
-    "release:patch": "release-it patch",
-    "release:minor": "release-it minor",
-    "release:major": "release-it major"
+    "test:coverage": "jest --coverage"
   },
   "repository": {
     "type": "git",
@@ -53,7 +48,6 @@
     "@types/jest": "^29.5.12",
     "@types/lodash": "^4.17.7",
     "jest": "^29.7.0",
-    "release-it": "^20.0.1",
     "ts-jest": "^29.2.3",
     "ts-loader": "^9.5.1",
     "typescript": "^5.6.2",
